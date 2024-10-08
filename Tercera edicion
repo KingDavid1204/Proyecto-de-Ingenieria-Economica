@@ -1,0 +1,175 @@
+import tkinter as tk
+from tkinter import messagebox
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import matplotlib.pyplot as plt
+from tkinter import ttk
+import numpy as np
+
+# Función para calcular interés simple, compuesto o amortización americana
+def calcular_interes():
+    try:
+        capital = float(entrada_capital.get())
+        tasa_interes = float(entrada_tasa.get())
+        tiempo = float(entrada_tiempo.get())
+        unidad_tiempo = combo_tiempo.get()
+        tipo_interes = combo_tipo_interes.get()
+
+        # Conversión de la unidad de tiempo
+        if unidad_tiempo == 'Días':
+            tiempo = tiempo / 365
+        elif unidad_tiempo == 'Meses':
+            tiempo = tiempo / 12
+
+        if tipo_interes == 'Interés Simple':
+            # Cálculo del interés simple
+            interes = capital * (tasa_interes / 100) * tiempo
+            monto_total = capital + interes
+        elif tipo_interes == 'Interés Compuesto':
+            # Cálculo del interés compuesto
+            n = 1  # Asumimos capitalización anual
+            monto_total = capital * (1 + (tasa_interes / 100) / n) ** (n * tiempo)
+            interes = monto_total - capital
+        elif tipo_interes == 'Amortización Americana':
+            # Cálculo de la amortización americana
+            interes = capital * (tasa_interes / 100) * tiempo  # Solo intereses a lo largo del tiempo
+            monto_total = capital + interes  # Capital devuelto al final
+
+        # Mostrar gráfico según el tipo de interés
+        mostrar_grafico_lineas(capital, tasa_interes, tiempo, tipo_interes)
+
+        # Mostrar los resultados
+        entrada_interes.config(state='normal')
+        entrada_interes.delete(0, tk.END)
+        entrada_interes.insert(0, f"{interes:.2f}")
+        entrada_interes.config(state='readonly')
+
+        entrada_monto.config(state='normal')
+        entrada_monto.delete(0, tk.END)
+        entrada_monto.insert(0, f"{monto_total:.2f}")
+        entrada_monto.config(state='readonly')
+
+    except ValueError:
+        messagebox.showerror("Error", "Por favor, ingresa valores numéricos válidos.")
+
+# Función para limpiar los campos
+def limpiar_campos():
+    entrada_capital.delete(0, tk.END)
+    entrada_tasa.delete(0, tk.END)
+    entrada_tiempo.delete(0, tk.END)
+    entrada_interes.config(state='normal')
+    entrada_interes.delete(0, tk.END)
+    entrada_interes.config(state='readonly')
+    entrada_monto.config(state='normal')
+    entrada_monto.delete(0, tk.END)
+    entrada_monto.config(state='readonly')
+
+# Función para mostrar gráfico de líneas
+def mostrar_grafico_lineas(capital, tasa_interes, tiempo, tipo_interes):
+    num_puntos = 100  # Se generan 100 puntos de tiempo
+    tiempo_array = np.linspace(0, tiempo, num_puntos)  # Crea un rango continuo de tiempo
+    valores = []
+
+    # Calcular los valores acumulados en cada período
+    for t in tiempo_array:
+        if tipo_interes == 'Interés Simple':
+            valor_acumulado = capital + (capital * (tasa_interes / 100) * t)
+        elif tipo_interes == 'Interés Compuesto':
+            # Cálculo del valor compuesto (fórmula exponencial)
+            valor_acumulado = capital * (1 + (tasa_interes / 100)) ** t
+        elif tipo_interes == 'Amortización Americana':
+            if t < tiempo:
+                valor_acumulado = capital * (tasa_interes / 100) * t  # Solo intereses hasta el final
+            else:
+                valor_acumulado = capital * (tasa_interes / 100) * t + capital  # Capital al final del período
+        valores.append(valor_acumulado)
+
+    # Crear el gráfico de líneas
+    fig, ax = plt.subplots(figsize=(4, 4), dpi=100)
+    ax.plot(tiempo_array, valores, marker='o', color='b' if tipo_interes == 'Interés Simple' else 'g')
+
+    # Configuración del gráfico
+    if tipo_interes == 'Interés Simple':
+        ax.set_title('Crecimiento Lineal del Capital - Interés Simple')
+    elif tipo_interes == 'Interés Compuesto':
+        ax.set_title('Crecimiento Exponencial del Capital - Interés Compuesto')
+    elif tipo_interes == 'Amortización Americana':
+        ax.set_title('Amortización Americana - Intereses Constantes')
+    
+    ax.set_xlabel('Tiempo (Años)')
+    ax.set_ylabel('Valor Acumulado')
+
+    # Insertar el gráfico en el frame
+    for widget in frame_grafico.winfo_children():
+        widget.destroy()  # Limpiar el gráfico anterior
+    canvas = FigureCanvasTkAgg(fig, master=frame_grafico)
+    canvas.draw()
+    canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+
+# Crear la ventana principal
+ventana = tk.Tk()
+ventana.title("Cálculo de Interés y Amortización")
+ventana.iconbitmap("ico.ico")
+
+# Crear los widgets
+etiqueta_capital = tk.Label(ventana, text="Capital:")
+etiqueta_capital.grid(row=0, column=0, padx=10, pady=5, sticky='w')
+
+entrada_capital = tk.Entry(ventana)
+entrada_capital.grid(row=0, column=1, padx=10, pady=5, sticky='w')
+
+etiqueta_tasa = tk.Label(ventana, text="Tasa de Interés (%):")
+etiqueta_tasa.grid(row=1, column=0, padx=10, pady=5, sticky='w')
+
+entrada_tasa = tk.Entry(ventana)
+entrada_tasa.grid(row=1, column=1, padx=10, pady=5, sticky='w')
+
+etiqueta_tiempo = tk.Label(ventana, text="Período:")
+etiqueta_tiempo.grid(row=2, column=0, padx=10, pady=5, sticky='w')
+
+entrada_tiempo = tk.Entry(ventana)
+entrada_tiempo.grid(row=2, column=1, padx=10, pady=5, sticky='w')
+
+etiqueta_tiempo_exp = tk.Label(ventana, text="Tiempo expresado en:")
+etiqueta_tiempo_exp.grid(row=3, column=0, padx=10, pady=5)
+
+combo_tiempo = ttk.Combobox(ventana, values=["Días", "Meses", "Años"], state="readonly")
+combo_tiempo.grid(row=3, column=1, padx=10, pady=5)
+combo_tiempo.current(2)
+
+# Añadir un ComboBox para seleccionar el tipo de interés
+etiqueta_tipo_interes = tk.Label(ventana, text="Tipo de Interés/Amortización:")
+etiqueta_tipo_interes.grid(row=4, column=0, padx=10, pady=5, sticky='w')
+
+combo_tipo_interes = ttk.Combobox(ventana, values=["Interés Simple", "Interés Compuesto", "Amortización Americana"], state="readonly")
+combo_tipo_interes.grid(row=4, column=1, padx=10, pady=5)
+combo_tipo_interes.current(0)
+
+etiqueta_interes = tk.Label(ventana, text="Interés generado:")
+etiqueta_interes.grid(row=5, column=0, padx=10, pady=5, sticky='w')
+
+entrada_interes = tk.Entry(ventana, state='readonly')
+entrada_interes.grid(row=5, column=1, padx=10, pady=5, sticky='w')
+
+etiqueta_monto = tk.Label(ventana, text="Valor a futuro:")
+etiqueta_monto.grid(row=6, column=0, padx=10, pady=5, sticky='w')
+
+entrada_monto = tk.Entry(ventana, state='readonly')
+entrada_monto.grid(row=6, column=1, padx=10, pady=5, sticky='w')
+
+# Frame para el gráfico
+frame_grafico = tk.Frame(ventana)
+frame_grafico.grid(row=0, column=2, rowspan=7, padx=10, pady=5)
+
+# Botones
+boton_calcular = tk.Button(ventana, text="Calcular", command=calcular_interes, bg='green', fg='white')
+boton_calcular.grid(row=7, column=0, padx=10, pady=5)
+
+boton_borrar = tk.Button(ventana, text="Borrar", command=limpiar_campos, bg='blue', fg='white')
+boton_borrar.grid(row=7, column=1, padx=10, pady=5)
+
+boton_salir = tk.Button(ventana, text="Salir", command=ventana.destroy, bg='#f44336', fg='white')
+boton_salir.grid(row=7, column=3, padx=10, pady=5)
+
+# Iniciar el bucle de la interfaz
+ventana.resizable(False, False)
+ventana.mainloop()
